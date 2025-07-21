@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Base configuration for development/debug builds -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+    
+    <!-- Domain-specific configurations -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Google Services -->
+        <domain includeSubdomains="true">googleapis.com</domain>
+        <domain includeSubdomains="true">accounts.google.com</domain>
+        <domain includeSubdomains="true">oauth2.googleapis.com</domain>
+        <!-- AI Agent API Server - Your VM -->
+        <domain includeSubdomains="false">98.70.33.52</domain>
+        <!-- Localhost for development -->
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>
