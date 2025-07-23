@@ -20,7 +20,7 @@ object NetworkModule {
     /**
      * AI Agent API base URL - your cloud server
      */
-    private const val AI_AGENT_BASE_URL = "http://98.70.41.127:5000/"
+    private const val AI_AGENT_BASE_URL = "http://20.244.5.184:5000/"
 
     @Provides
     @Singleton

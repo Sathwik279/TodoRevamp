@@ -28,6 +28,10 @@ class AddEditTodoViewModel @Inject constructor(
         private set
     var description by mutableStateOf("")
         private set
+    var tags by mutableStateOf("")
+        private set
+    var imagePaths by mutableStateOf(listOf<String>())
+        private set
 
     private val _uiEvent = Channel<UiEvent>()
     val uiEvent = _uiEvent.receiveAsFlow()
@@ -39,7 +43,13 @@ class AddEditTodoViewModel @Inject constructor(
                 repository.getTodoById(todoId!!)?.let{
                     todo->
                     title = todo.title
-                    description = todo.description?:""
+                    description = todo.description ?: ""
+                    tags = todo.tags
+                    imagePaths = if (todo.imagePaths.isNotBlank()) {
+                        todo.imagePaths.split(",").filter { it.isNotBlank() }
+                    } else {
+                        emptyList()
+                    }
 
                     this@AddEditTodoViewModel.todo = todo
 
@@ -55,6 +65,41 @@ class AddEditTodoViewModel @Inject constructor(
             is AddEditTodoEvent.OnDescriptionChange ->{
                 description = event.description
             }
+            is AddEditTodoEvent.OnTagsChange -> {
+                tags = event.tags
+            }
+            is AddEditTodoEvent.OnAddImage -> {
+                imagePaths = imagePaths + event.imagePath
+            }
+            is AddEditTodoEvent.OnRemoveImage -> {
+                imagePaths = imagePaths.filter { it != event.imagePath }
+            }
+            is AddEditTodoEvent.OnSelectImages -> {
+                // This will be handled by the UI directly with image picker
+                // No action needed here as the UI will call OnAddImage when images are selected
+            }
+            is AddEditTodoEvent.OnMergeAiContent -> {
+                todo?.let { currentTodo ->
+                    if (currentTodo.enhancedContent != null && currentTodo.enhancementStatus == "completed") {
+                        // Merge AI content into description
+                        val mergedDescription = if (description.isBlank()) {
+                            currentTodo.enhancedContent
+                        } else {
+                            "$description\n\n--- AI Enhanced Content ---\n${currentTodo.enhancedContent}"
+                        }
+                        description = mergedDescription
+                        sendUiEvent(UiEvent.ShowSnackBar(
+                            message = "AI content merged successfully!",
+                            action = null
+                        ))
+                    } else {
+                        sendUiEvent(UiEvent.ShowSnackBar(
+                            message = "No AI content available to merge",
+                            action = null
+                        ))
+                    }
+                }
+            }
             is AddEditTodoEvent.OnSaveTodoClick ->{
                 viewModelScope.launch{
                     if(title.isBlank()){
@@ -69,10 +114,13 @@ class AddEditTodoViewModel @Inject constructor(
                             title = title,
                             description = description,
                             isDone = todo?.isDone ?: false,
+                            isPinned = todo?.isPinned ?: false,
+                            tags = tags,
+                            imagePaths = imagePaths.joinToString(","),
                             isGoAiTagged = todo?.isGoAiTagged ?: false,
                             enhancementStatus = todo?.enhancementStatus ?: "none",
                             enhancedContent = todo?.enhancedContent,
-                            lastUpdated = todo?.lastUpdated ?: System.currentTimeMillis(),
+                            lastUpdated = System.currentTimeMillis(),
                             id = todo?.id
                         )
                     )

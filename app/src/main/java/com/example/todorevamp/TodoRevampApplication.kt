@@ -20,8 +20,7 @@ class TodoRevampApplication : Application(), Configuration.Provider {
             
     override fun onCreate() {
         super.onCreate()
-        
-        // Initialize WorkManager with Hilt
-        WorkManager.initialize(this, workManagerConfiguration)
+        // WorkManager is automatically initialized via Configuration.Provider
+        // No need to manually initialize
     }
 }

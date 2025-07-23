@@ -18,8 +18,12 @@ interface TodoDao{
     @Query("SELECT * from todo where id = :id")
     suspend fun getTodoById(id: Int): Todo? // nullable to handle case where no recode is found we need to handle nullability or app will crash
 
-    @Query("select * from todo")
+    @Query("select * from todo ORDER BY is_pinned DESC, last_updated DESC")
     fun getTodos(): Flow<List<Todo>>
+
+    // Search todos by title, description, or tags
+    @Query("SELECT * FROM todo WHERE title LIKE '%' || :query || '%' OR description LIKE '%' || :query || '%' OR tags LIKE '%' || :query || '%' ORDER BY is_pinned DESC, last_updated DESC")
+    fun searchTodos(query: String): Flow<List<Todo>>
 
     // goAi specific queries
     @Query("SELECT * FROM todo WHERE is_goai_tagged = 1 AND enhancement_status = 'pending'")

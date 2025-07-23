@@ -57,6 +57,15 @@ dependencies {
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.4.0")
 
+    // Activity Result API for image picking
+    implementation("androidx.activity:activity-compose:1.8.2")
+
+    // PDF generation library
+    implementation("com.itextpdf:itext7-core:7.2.5")
+    
+    // For bitmap operations
+    implementation("androidx.compose.ui:ui-graphics:1.5.4")
+
     // WorkManager for background processing
     implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation("androidx.hilt:hilt-work:1.2.0")

@@ -12,6 +12,8 @@ interface TodoRepository {
 
     fun getTodos(): Flow<List<Todo>> // flow means we get realtime updates when something changes and these help to update the ui
 
+    fun searchTodos(query: String): Flow<List<Todo>> // search todos including tags
+
     // goAi specific methods
     suspend fun getPendingGoAiTodos(): List<Todo>
     

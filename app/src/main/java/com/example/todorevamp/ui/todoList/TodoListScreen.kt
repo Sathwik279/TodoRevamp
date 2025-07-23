@@ -1,10 +1,13 @@
 package com.example.todorevamp.ui.todoList
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,7 +26,9 @@ import androidx.compose.material.rememberScaffoldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Coffee
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -38,6 +44,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -45,6 +52,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -61,9 +70,15 @@ fun TodoListScreen(
 ){
     val todos = viewModel.todos.collectAsState()
     val searchText = viewModel.searchText.collectAsState()
+    val showImageDialog = viewModel.showImageDialog.collectAsState()
+    val selectedTodoImages = viewModel.selectedTodoImages.collectAsState()
     val scaffoldState = rememberScaffoldState()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    
+    // State for full-screen image viewing
+    var showFullScreenImage by remember { mutableStateOf(false) }
+    var fullScreenImagePath by remember { mutableStateOf("") }
 
     LaunchedEffect(key1 = true) {
         viewModel.uiEvent.collect{event->
@@ -124,7 +139,16 @@ fun TodoListScreen(
             scaffoldState = scaffoldState,
             topBar = {
                 TopAppBar(
-                    title = { Text("Todo Revamp") },
+                    title = { 
+                        Text(
+                            "✨ Todo Revamp",
+                            style = MaterialTheme.typography.h6.copy(
+                                fontWeight = FontWeight.Bold
+                            )
+                        ) 
+                    },
+                    backgroundColor = Color(0xFFE91E63),  // Vibrant pink background
+                    contentColor = Color.White,
                     navigationIcon = {
                         IconButton(onClick = {
                             scope.launch {
@@ -133,7 +157,8 @@ fun TodoListScreen(
                         }) {
                             Icon(
                                 imageVector = Icons.Default.Menu,
-                                contentDescription = "Menu"
+                                contentDescription = "Menu",
+                                tint = Color.White
                             )
                         }
                     },
@@ -175,19 +200,25 @@ fun TodoListScreen(
                 )
             },
             floatingActionButton = {
-                FloatingActionButton(onClick = {
-                    viewModel.onEvent(TodoListEvent.OnAddTodoClick)
-                }) {
+                FloatingActionButton(
+                    onClick = {
+                        viewModel.onEvent(TodoListEvent.OnAddTodoClick)
+                    },
+                    backgroundColor = Color(0xFFE91E63),  // Vibrant pink
+                    contentColor = Color.White,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "Add"
+                        contentDescription = "Add",
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             },
             snackbarHost = { hostState ->
                 SnackbarHost(
                     hostState = hostState,
-                    modifier = Modifier.padding(bottom = 80.dp)
+                    modifier = Modifier.padding(bottom = 16.dp)
                 )
             }
         ){
@@ -195,6 +226,15 @@ fun TodoListScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFFFFFBFE),  // Light pink at top
+                            Color(0xFFF8F8FF),  // Light lavender
+                            Color(0xFFFFF0F5)   // Light pink at bottom
+                        )
+                    )
+                )
                 .padding(innerPadding)
         ) {
             // Search Bar
@@ -204,18 +244,27 @@ fun TodoListScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                placeholder = { Text("Search todos...") },
+                placeholder = { 
+                    Text(
+                        "🔍 Search todos...",
+                        color = Color(0xFF9C27B0).copy(alpha = 0.6f)
+                    ) 
+                },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
-                        contentDescription = "Search"
+                        contentDescription = "Search",
+                        tint = Color(0xFF9C27B0)
                     )
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = TextFieldDefaults.outlinedTextFieldColors(
-                    focusedBorderColor = MaterialTheme.colors.primary,
-                    unfocusedBorderColor = MaterialTheme.colors.onSurface.copy(alpha = 0.3f)
+                    focusedBorderColor = Color(0xFFE91E63),
+                    unfocusedBorderColor = Color(0xFF9C27B0).copy(alpha = 0.5f),
+                    backgroundColor = Color.White.copy(alpha = 0.9f),
+                    textColor = Color(0xFF1A1A1A),
+                    cursorColor = Color(0xFFE91E63)
                 )
             )
             
@@ -247,7 +296,8 @@ fun TodoListScreen(
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 80.dp) // Add padding to avoid FAB overlap
                 ){
                     items(todos.value){todo->
                         TodoItem(
@@ -255,6 +305,158 @@ fun TodoListScreen(
                             onEvent = viewModel::onEvent,
                             modifier = Modifier.fillMaxWidth(),
                             isGoAiEnabled = viewModel.isGoAiEnabled()
+                        )
+                    }
+                }
+            }
+        }
+    }
+    
+    // Image Dialog
+    if (showImageDialog.value) {
+        Dialog(
+            onDismissRequest = { viewModel.dismissImageDialog() },
+            properties = DialogProperties(
+                dismissOnBackPress = true,
+                dismissOnClickOutside = true
+            )
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(16.dp),
+                backgroundColor = MaterialTheme.colors.surface
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Todo Images (${selectedTodoImages.value.size})",
+                            style = MaterialTheme.typography.h6,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        IconButton(
+                            onClick = { viewModel.dismissImageDialog() }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = MaterialTheme.colors.onSurface
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    if (selectedTodoImages.value.isNotEmpty()) {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(selectedTodoImages.value) { imagePath ->
+                                Card(
+                                    modifier = Modifier
+                                        .size(120.dp)
+                                        .clickable {
+                                            fullScreenImagePath = imagePath
+                                            showFullScreenImage = true
+                                        },
+                                    shape = RoundedCornerShape(12.dp),
+                                    elevation = 4.dp
+                                ) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(imagePath)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Todo Image",
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(RoundedCornerShape(12.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No images found",
+                                style = MaterialTheme.typography.body2,
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Full-screen image dialog
+    if (showFullScreenImage) {
+        Dialog(
+            onDismissRequest = { 
+                showFullScreenImage = false
+                fullScreenImagePath = ""
+            },
+            properties = DialogProperties(
+                dismissOnBackPress = true,
+                dismissOnClickOutside = true,
+                usePlatformDefaultWidth = false
+            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .clickable { 
+                        showFullScreenImage = false
+                        fullScreenImagePath = ""
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(fullScreenImagePath)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Full Screen Image",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+                
+                // Close button
+                IconButton(
+                    onClick = { 
+                        showFullScreenImage = false
+                        fullScreenImagePath = ""
+                    },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                ) {
+                    Card(
+                        shape = CircleShape,
+                        backgroundColor = Color.Black.copy(alpha = 0.6f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = Color.White,
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .size(24.dp)
                         )
                     }
                 }

@@ -1,5 +1,8 @@
 package com.example.todorevamp.ui.todoList
 
+import android.content.Context
+import android.content.Intent
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -7,9 +10,11 @@ import com.example.todorevamp.data.Todo
 import com.example.todorevamp.data.TodoRepository
 import com.example.todorevamp.goai.GoAiService
 import com.example.todorevamp.repository.AuthRepository
+import com.example.todorevamp.util.PdfExporter
 import com.example.todorevamp.util.Routes
 import com.example.todorevamp.util.UiEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -20,7 +25,8 @@ import javax.inject.Inject
 class TodoListViewModel @Inject constructor(
     private val repository: TodoRepository,
     private val authRepository: AuthRepository,
-    private val goAiService: GoAiService
+    private val goAiService: GoAiService,
+    @ApplicationContext private val context: Context
 ): ViewModel(){
 
     private val _searchText = MutableStateFlow("")
@@ -31,9 +37,11 @@ class TodoListViewModel @Inject constructor(
         if (searchText.isBlank()) {
             todoList
         } else {
+            // Search in title, description, and tags
             todoList.filter { todo ->
                 todo.title.contains(searchText, ignoreCase = true) ||
-                todo.description.contains(searchText, ignoreCase = true)
+                todo.description.contains(searchText, ignoreCase = true) ||
+                todo.tags.contains(searchText, ignoreCase = true)
             }
         }
     }.stateIn(
@@ -47,6 +55,13 @@ class TodoListViewModel @Inject constructor(
 
     private var deleteTodo: Todo? = null // used to undo a delete
 
+    // Image dialog state
+    private val _showImageDialog = MutableStateFlow(false)
+    val showImageDialog = _showImageDialog.asStateFlow()
+    
+    private val _selectedTodoImages = MutableStateFlow<List<String>>(emptyList())
+    val selectedTodoImages = _selectedTodoImages.asStateFlow()
+
     // Get current user info
     fun getCurrentUser() = authRepository.getCurrentUser()
 
@@ -55,6 +70,11 @@ class TodoListViewModel @Inject constructor(
     }
 
     fun isGoAiEnabled(): Boolean = goAiService.isGoAiEnabled()
+    
+    fun dismissImageDialog() {
+        _showImageDialog.value = false
+        _selectedTodoImages.value = emptyList()
+    }
 
     fun onEvent(event: TodoListEvent){
         when(event){
@@ -129,12 +149,82 @@ class TodoListViewModel @Inject constructor(
                     }
                 }
             }
+            is TodoListEvent.OnPinToggle -> {
+                viewModelScope.launch {
+                    val updatedTodo = event.todo.copy(
+                        isPinned = !event.todo.isPinned,
+                        lastUpdated = System.currentTimeMillis()
+                    )
+                    repository.insertTodo(updatedTodo)
+                    
+                    val message = if (updatedTodo.isPinned) "Todo pinned to top" else "Todo unpinned"
+                    sendUiEvent(UiEvent.ShowSnackBar(
+                        message = message,
+                        action = null
+                    ))
+                }
+            }
+            is TodoListEvent.OnShowImages -> {
+                val imageList = event.todo.imagePaths.split(",").filter { it.isNotBlank() }
+                _selectedTodoImages.value = imageList
+                _showImageDialog.value = true
+            }
+            is TodoListEvent.OnExportToPdf -> {
+                viewModelScope.launch {
+                    exportTodoToPdf(event.todo)
+                }
+            }
         }
     }
 
     private fun sendUiEvent(event: UiEvent){
         viewModelScope.launch{
             _uiEvent.send(event)
+        }
+    }
+    
+    private suspend fun exportTodoToPdf(todo: Todo) {
+        try {
+            val pdfExporter = PdfExporter(context)
+            val pdfFile = pdfExporter.exportTodoToPdf(todo)
+            
+            if (pdfFile != null && pdfFile.exists()) {
+                // Create share intent
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    pdfFile
+                )
+                
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/pdf"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_SUBJECT, "Todo: ${todo.title}")
+                    putExtra(Intent.EXTRA_TEXT, "Here's your todo exported as PDF")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                
+                val chooserIntent = Intent.createChooser(shareIntent, "Share Todo PDF")
+                chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(chooserIntent)
+                
+                sendUiEvent(UiEvent.ShowSnackBar(
+                    message = "PDF exported and ready to share!",
+                    action = null
+                ))
+            } else {
+                sendUiEvent(UiEvent.ShowSnackBar(
+                    message = "Failed to export PDF. Please try again.",
+                    action = null
+                ))
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            sendUiEvent(UiEvent.ShowSnackBar(
+                message = "Error exporting PDF: ${e.message}",
+                action = null
+            ))
         }
     }
 

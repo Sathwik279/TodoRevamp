@@ -22,6 +22,10 @@ class TodoRepositoryImplementation(
         return dao.getTodos()
     }
 
+    override fun searchTodos(query: String): Flow<List<Todo>> {
+        return dao.searchTodos(query)
+    }
+
     override suspend fun getPendingGoAiTodos(): List<Todo> {
         return dao.getPendingGoAiTodos()
     }

@@ -29,8 +29,10 @@ object AppModule {
             app,
             TodoDatabase::class.java,
             "todo_db"
-        ).addMigrations(TodoDatabase.MIGRATION_1_2)
-        .build()
+        ).addMigrations(
+            TodoDatabase.MIGRATION_1_2,
+            TodoDatabase.MIGRATION_2_3
+        ).build()
 
     }
 
