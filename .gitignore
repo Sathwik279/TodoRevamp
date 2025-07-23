@@ -13,3 +13,14 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Environment files containing secrets
+.env
+backend/.env
+*.env.local
+*.env.production
+
+# API Keys and secrets
+**/secrets/
+**/keys/
+google-services.json
